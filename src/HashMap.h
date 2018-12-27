@@ -5,6 +5,10 @@
 #include <initializer_list>
 #include <stdexcept>
 #include <utility>
+#include <list>
+#include <vector>
+
+#define MAX_SIZE 10000
 
 namespace aisdi
 {
@@ -25,129 +29,175 @@ public:
   using iterator = Iterator;
   using const_iterator = ConstIterator;
 
-  HashMap()
-  {}
+private:
+    std::vector <value_type> tab[MAX_SIZE];
+    //size_type first, last;
+    size_type size;
+    //std::hash <key_type> hashKey;
 
-  HashMap(std::initializer_list<value_type> list)
-  {
-    (void)list; // disables "unused argument" warning, can be removed when method is implemented.
-    throw std::runtime_error("TODO");
+
+public:
+
+  /*int getHash(const key_type &key) {
+    return std::hash<key_type> ()(key)%MAX_SIZE;
+  }*/
+
+  size_type getHash(const key_type &key) const{
+   // #ifdef OperationCountingObject
+        return key% MAX_SIZE;
+    /*#else
+        return std::hash<key_type>()(key) % MAX_SIZE;
+    #endif*/
+}
+
+ /*void append(const const_iterator &it) {
+    tab[getHash(it->first)].push_back(it->second);
+    size++;
+  }*/
+
+  void append(const value_type data) {
+    tab[getHash(data.first)].push_back(data);
+    size++;
   }
 
-  HashMap(const HashMap& other)
-  {
+  HashMap() {
+    size = 0;
+  }
+
+  ~HashMap() {
+  }
+
+  HashMap(std::initializer_list<value_type> list) : HashMap() {
+    for(auto it = list.begin(); it != list.end(); it++) {
+        append(std::make_pair(it->first, it->second));
+    }
+  }
+
+  HashMap(const HashMap& other) : HashMap() {
+    for(auto it = other.begin(); it != other.end(); it++) {
+        append(std::make_pair(it->first, it->second));
+    }
+  }
+
+  HashMap(HashMap&& other) {
+    (void)other;
+    //throw std::runtime_error("TODO");
+  }
+
+  HashMap& operator=(const HashMap& other) {
     (void)other;
     throw std::runtime_error("TODO");
   }
 
-  HashMap(HashMap&& other)
-  {
+  HashMap& operator=(HashMap&& other) {
     (void)other;
     throw std::runtime_error("TODO");
   }
 
-  HashMap& operator=(const HashMap& other)
-  {
-    (void)other;
-    throw std::runtime_error("TODO");
+  bool isEmpty() const {
+    return (size == 0);
   }
 
-  HashMap& operator=(HashMap&& other)
-  {
-    (void)other;
-    throw std::runtime_error("TODO");
+  mapped_type& operator[](const key_type& key) {
+    size_type hashedKey = getHash(key);
+    size_type i = 0;
+    while (i < tab[hashedKey].size()) {
+        if(tab[hashedKey].at(i).first == key)
+            return tab[hashedKey].at(i).second;
+    }
+    append(std::make_pair(key, mapped_type()));
+    return tab[getHash(key)].front().second;
+    //append()
   }
 
-  bool isEmpty() const
-  {
-    throw std::runtime_error("TODO");
-  }
-
-  mapped_type& operator[](const key_type& key)
-  {
+  const mapped_type& valueOf(const key_type& key) const {
     (void)key;
     throw std::runtime_error("TODO");
   }
 
-  const mapped_type& valueOf(const key_type& key) const
-  {
+  mapped_type& valueOf(const key_type& key) {
     (void)key;
     throw std::runtime_error("TODO");
   }
 
-  mapped_type& valueOf(const key_type& key)
-  {
+  const_iterator find(const key_type& key) const {
+    size_type hashedKey = getHash(key);
+    if(tab[hashedKey].empty())
+        return const_iterator(this);
+    else
+        return const_iterator(this, hashedKey, 0);
+  }
+
+  iterator find(const key_type& key) {
+    size_type hashedKey = getHash(key);
+    if(tab[hashedKey].empty())
+        return iterator(this);
+    else
+        return iterator(this, hashedKey, 0);
+  }
+
+  void remove(const key_type& key) {
     (void)key;
     throw std::runtime_error("TODO");
   }
 
-  const_iterator find(const key_type& key) const
-  {
-    (void)key;
-    throw std::runtime_error("TODO");
-  }
-
-  iterator find(const key_type& key)
-  {
-    (void)key;
-    throw std::runtime_error("TODO");
-  }
-
-  void remove(const key_type& key)
-  {
-    (void)key;
-    throw std::runtime_error("TODO");
-  }
-
-  void remove(const const_iterator& it)
-  {
+  void remove(const const_iterator& it) {
     (void)it;
     throw std::runtime_error("TODO");
   }
 
-  size_type getSize() const
-  {
-    throw std::runtime_error("TODO");
+  size_type getSize() const {
+    return size;
   }
 
-  bool operator==(const HashMap& other) const
-  {
+  bool operator==(const HashMap& other) const {
     (void)other;
     throw std::runtime_error("TODO");
   }
 
-  bool operator!=(const HashMap& other) const
-  {
+  bool operator!=(const HashMap& other) const {
     return !(*this == other);
   }
 
-  iterator begin()
-  {
-    throw std::runtime_error("TODO");
+  iterator begin() {
+    if(isEmpty())
+        return iterator(this);
+    size_type i = 0;
+    while(i < MAX_SIZE) {
+        if(tab[i].empty())
+            i++;
+        else
+            break;
+    }
+    return iterator(this, i, 0);
   }
 
-  iterator end()
-  {
-    throw std::runtime_error("TODO");
+  iterator end() {
+    return iterator(this);
   }
 
-  const_iterator cbegin() const
-  {
-    throw std::runtime_error("TODO");
+  const_iterator cbegin() const {
+    if(isEmpty())
+        return const_iterator(this);
+    size_type i = 0;
+    while(i < MAX_SIZE) {
+        if(tab[i].empty())
+            i++;
+        else
+            break;
+    }
+    return const_iterator(this, i, 0);
   }
 
-  const_iterator cend() const
-  {
-    throw std::runtime_error("TODO");
+  const_iterator cend() const {
+    return const_iterator(this);
   }
 
-  const_iterator begin() const
-  {
+  const_iterator begin() const {
     return cbegin();
   }
 
-  const_iterator end() const
-  {
+  const_iterator end() const {
     return cend();
   }
 };
@@ -161,53 +211,104 @@ public:
   using value_type = typename HashMap::value_type;
   using pointer = const typename HashMap::value_type*;
 
-  explicit ConstIterator()
-  {}
+private:
+  const HashMap *map;
+  size_type tabIndex, innerIndex;
 
-  ConstIterator(const ConstIterator& other)
-  {
-    (void)other;
-    throw std::runtime_error("TODO");
+public:
+
+  explicit ConstIterator(const HashMap *map, size_type tabIndex = MAX_SIZE, size_type innerIndex = MAX_SIZE) {
+    this->map = map;
+    this->tabIndex = tabIndex;
+    this->innerIndex = innerIndex;
   }
 
-  ConstIterator& operator++()
-  {
-    throw std::runtime_error("TODO");
+  ConstIterator(const ConstIterator& other) {
+    this->map = other.map;
+    this->tabIndex = other.tabIndex;
+    this->innerIndex = other.innerIndex;
   }
 
-  ConstIterator operator++(int)
-  {
-    throw std::runtime_error("TODO");
+  ConstIterator& operator++() {
+    if(map->isEmpty())
+        throw std::out_of_range("Cannot increment while map is empty");
+    if(tabIndex == MAX_SIZE)
+        throw std::out_of_range("Trying to increment end");
+    if(map->tab[tabIndex].size() > innerIndex + 1)
+        innerIndex++;
+    else {
+        tabIndex++;
+        while(tabIndex < MAX_SIZE) {
+            if(map->tab[tabIndex].empty())
+                tabIndex++;
+            else
+                break;
+        }
+        if(tabIndex == MAX_SIZE)
+            innerIndex = MAX_SIZE;
+    }
+    return *this;
   }
 
-  ConstIterator& operator--()
-  {
-    throw std::runtime_error("TODO");
+  ConstIterator operator++(int) {
+    auto result = *this;
+    operator++();
+    return result;
   }
 
-  ConstIterator operator--(int)
-  {
-    throw std::runtime_error("TODO");
+  ConstIterator& operator--() {
+    if(map->isEmpty())
+        throw std::out_of_range("Cannot decrement while map is empty");
+    if(*this == map->begin())
+        throw std::out_of_range("trying to decrement begin");
+    if(tabIndex == MAX_SIZE) {
+        tabIndex--;
+        innerIndex = 0;
+        while(tabIndex > 0) { //another duplication of code
+            if(map->tab[tabIndex].empty())
+                tabIndex--;
+            else
+                break;
+        }
+        return *this;
+    }
+    if(innerIndex > 0)
+        innerIndex--;
+    else {
+        tabIndex--;
+        while(tabIndex > 0) {
+            if(map->tab[tabIndex].empty())
+                tabIndex--;
+            else
+                break;
+        }
+        if(tabIndex == MAX_SIZE)
+            innerIndex = MAX_SIZE;
+    }
+    return *this;
   }
 
-  reference operator*() const
-  {
-    throw std::runtime_error("TODO");
+  ConstIterator operator--(int) {
+    auto result = *this;
+    operator--();
+    return result;
   }
 
-  pointer operator->() const
-  {
+  reference operator*() const {
+    if(tabIndex == MAX_SIZE)
+        throw std::out_of_range("Value unavaible");
+    return map->tab[tabIndex].at(innerIndex);
+  }
+
+  pointer operator->() const {
     return &this->operator*();
   }
 
-  bool operator==(const ConstIterator& other) const
-  {
-    (void)other;
-    throw std::runtime_error("TODO");
+  bool operator==(const ConstIterator& other) const {
+    return ((other.innerIndex == this->innerIndex) && (other.tabIndex == this->tabIndex));
   }
 
-  bool operator!=(const ConstIterator& other) const
-  {
+  bool operator!=(const ConstIterator& other) const {
     return !(*this == other);
   }
 };
@@ -222,43 +323,39 @@ public:
   explicit Iterator()
   {}
 
+  Iterator(const HashMap *map, size_type tabIndex = MAX_SIZE, size_type innerIndex = MAX_SIZE) : ConstIterator(map, tabIndex, innerIndex){}
+
   Iterator(const ConstIterator& other)
     : ConstIterator(other)
   {}
 
-  Iterator& operator++()
-  {
+  Iterator& operator++() {
     ConstIterator::operator++();
     return *this;
   }
 
-  Iterator operator++(int)
-  {
+  Iterator operator++(int) {
     auto result = *this;
     ConstIterator::operator++();
     return result;
   }
 
-  Iterator& operator--()
-  {
+  Iterator& operator--() {
     ConstIterator::operator--();
     return *this;
   }
 
-  Iterator operator--(int)
-  {
+  Iterator operator--(int) {
     auto result = *this;
     ConstIterator::operator--();
     return result;
   }
 
-  pointer operator->() const
-  {
+  pointer operator->() const {
     return &this->operator*();
   }
 
-  reference operator*() const
-  {
+  reference operator*() const {
     // ugly cast, yet reduces code duplication.
     return const_cast<reference>(ConstIterator::operator*());
   }
