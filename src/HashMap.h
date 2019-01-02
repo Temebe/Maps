@@ -23,6 +23,7 @@ public:
   using size_type = std::size_t;
   using reference = value_type&;
   using const_reference = const value_type&;
+  using list_iterator = typename std::list<value_type>::iterator;
 
   class ConstIterator;
   class Iterator;
@@ -30,7 +31,8 @@ public:
   using const_iterator = ConstIterator;
 
 private:
-    std::vector <value_type> tab[MAX_SIZE];
+    //std::vector <value_type> *tab;
+    std::list <value_type> *tab;
     //size_type first, last;
     size_type size;
     //std::hash <key_type> hashKey;
@@ -62,6 +64,7 @@ public:
 
   HashMap() {
     size = 0;
+    tab = new std::list <value_type> [MAX_SIZE];
   }
 
   ~HashMap() {
@@ -80,18 +83,41 @@ public:
   }
 
   HashMap(HashMap&& other) {
-    (void)other;
-    //throw std::runtime_error("TODO");
+    this->size = other.size;
+    this->tab = other.tab;
+    other.tab = nullptr;
+    other.size = 0;
   }
 
   HashMap& operator=(const HashMap& other) {
-    (void)other;
-    throw std::runtime_error("TODO");
+    if(this == &other)
+        return *this;
+    size_type i = 0;
+    while(i < MAX_SIZE) {
+        tab[i].clear();
+        i++;
+    }
+    //delete[] tab;
+    size = 0;
+    for(auto it = other.begin(); it != other.end(); i++)
+        append(std::make_pair((*it).first, (*it).second));
+    return *this;
   }
 
   HashMap& operator=(HashMap&& other) {
-    (void)other;
-    throw std::runtime_error("TODO");
+    if(this == &other)
+        return *this;
+    size_type i = 0;
+    while(i < MAX_SIZE) {
+        tab[i].clear();
+        i++;
+    }
+    delete[] tab;
+    this->size = other.size;
+    this->tab = other.tab;
+    other.tab = nullptr;
+    other.size = 0;
+    return *this;
   }
 
   bool isEmpty() const {
@@ -100,13 +126,13 @@ public:
 
   mapped_type& operator[](const key_type& key) {
     size_type hashedKey = getHash(key);
-    size_type i = 0;
-    while (i < tab[hashedKey].size()) {
-        if(tab[hashedKey].at(i).first == key)
-            return tab[hashedKey].at(i).second;
+    list_iterator list_it = tab[hashedKey].begin();
+    while (list_it != tab[hashedKey].end()) {
+        if((*list_it).first == key)
+            return (*list_it).second;
     }
     append(std::make_pair(key, mapped_type()));
-    return tab[getHash(key)].front().second;
+    return tab[getHash(key)].back().second;
     //append()
   }
 
@@ -122,28 +148,58 @@ public:
 
   const_iterator find(const key_type& key) const {
     size_type hashedKey = getHash(key);
+    list_iterator list_it = tab[hashedKey].begin();
     if(tab[hashedKey].empty())
-        return const_iterator(this);
-    else
-        return const_iterator(this, hashedKey, 0);
+        return const_iterator(this, MAX_SIZE, tab[0].begin());
+    else {
+        while(list_it != tab[hashedKey].end()) {
+            if((*list_it).first == key)
+                break;
+            list_it++;
+        }
+    }
+    return const_iterator(this, hashedKey, list_it);
   }
 
   iterator find(const key_type& key) {
     size_type hashedKey = getHash(key);
+    list_iterator list_it = tab[hashedKey].begin();
     if(tab[hashedKey].empty())
-        return iterator(this);
-    else
-        return iterator(this, hashedKey, 0);
+        return iterator(this, MAX_SIZE, tab[0].begin());
+    else {
+        while(list_it != tab[hashedKey].end()) {
+            if((*list_it).first == key)
+                break;
+            list_it++;
+        }
+    }
+    return iterator(this, hashedKey, list_it);
   }
 
   void remove(const key_type& key) {
-    (void)key;
-    throw std::runtime_error("TODO");
+    if(isEmpty())
+        throw std::out_of_range("Trying to remove from empty");
+    if(tab[getHash(key)].empty())
+        throw std::out_of_range("Trying to reach non existent key");
+    auto it = tab[getHash(key)].begin();
+    auto end = tab[getHash(key)].end();
+    while(it != end) {
+        if(key == it->first) {
+            tab[getHash(key)].erase(it);
+            size--;
+            return;
+        }
+        it++;
+    }
+    throw std::out_of_range("Trying to remove non existent value");
   }
 
   void remove(const const_iterator& it) {
-    (void)it;
-    throw std::runtime_error("TODO");
+    if(isEmpty())
+        throw std::out_of_range("Trying to remove from empty");
+    if(it == end())
+        throw std::out_of_range("Trying to remove end()");
+    remove((*it).first);
   }
 
   size_type getSize() const {
@@ -161,7 +217,7 @@ public:
 
   iterator begin() {
     if(isEmpty())
-        return iterator(this);
+        return iterator(this, MAX_SIZE, tab[0].end());
     size_type i = 0;
     while(i < MAX_SIZE) {
         if(tab[i].empty())
@@ -169,16 +225,16 @@ public:
         else
             break;
     }
-    return iterator(this, i, 0);
+    return iterator(this, i, tab[i].begin());
   }
 
   iterator end() {
-    return iterator(this);
+    return iterator(this, MAX_SIZE, tab[0].end());
   }
 
   const_iterator cbegin() const {
     if(isEmpty())
-        return const_iterator(this);
+        return const_iterator(this, MAX_SIZE, tab[0].end());
     size_type i = 0;
     while(i < MAX_SIZE) {
         if(tab[i].empty())
@@ -186,11 +242,11 @@ public:
         else
             break;
     }
-    return const_iterator(this, i, 0);
+    return const_iterator(this, i, tab[i].begin());
   }
 
   const_iterator cend() const {
-    return const_iterator(this);
+    return const_iterator(this, MAX_SIZE, tab[0].end());
   }
 
   const_iterator begin() const {
@@ -210,23 +266,28 @@ public:
   using iterator_category = std::bidirectional_iterator_tag;
   using value_type = typename HashMap::value_type;
   using pointer = const typename HashMap::value_type*;
+  using list_iterator = typename std::list<value_type>::iterator;
 
 private:
   const HashMap *map;
-  size_type tabIndex, innerIndex;
+  size_type tabIndex;
+  list_iterator list_it;
+  //std::vector <std::pair<key_type, mapped_type> > *tab;
+
+  friend void HashMap <KeyType, ValueType>::remove(const const_iterator& it);
 
 public:
 
-  explicit ConstIterator(const HashMap *map, size_type tabIndex = MAX_SIZE, size_type innerIndex = MAX_SIZE) {
-    this->map = map;
+  explicit ConstIterator(const HashMap *map, size_type tabIndex, list_iterator list_it) : map(map), tabIndex(tabIndex), list_it(list_it) {
+    /*this->map = map;
     this->tabIndex = tabIndex;
-    this->innerIndex = innerIndex;
+    this->list_it = list_it;*/
   }
 
   ConstIterator(const ConstIterator& other) {
     this->map = other.map;
     this->tabIndex = other.tabIndex;
-    this->innerIndex = other.innerIndex;
+    this->list_it = other.list_it;
   }
 
   ConstIterator& operator++() {
@@ -234,19 +295,21 @@ public:
         throw std::out_of_range("Cannot increment while map is empty");
     if(tabIndex == MAX_SIZE)
         throw std::out_of_range("Trying to increment end");
-    if(map->tab[tabIndex].size() > innerIndex + 1)
-        innerIndex++;
-    else {
+    list_it++;
+    if(map->tab[tabIndex].end() == list_it) {
         tabIndex++;
         while(tabIndex < MAX_SIZE) {
             if(map->tab[tabIndex].empty())
                 tabIndex++;
-            else
-                break;
+            else {
+                list_it = map->tab[tabIndex].begin();
+                return *this;
+            }
         }
-        if(tabIndex == MAX_SIZE)
-            innerIndex = MAX_SIZE;
+        // if(tabIndex == MAX_SIZE)
     }
+    if(tabIndex == MAX_SIZE)
+        list_it = map->tab[0].end();
     return *this;
   }
 
@@ -261,29 +324,30 @@ public:
         throw std::out_of_range("Cannot decrement while map is empty");
     if(*this == map->begin())
         throw std::out_of_range("trying to decrement begin");
+    list_it--;
     if(tabIndex == MAX_SIZE) {
         tabIndex--;
-        innerIndex = 0;
         while(tabIndex > 0) { //another duplication of code
             if(map->tab[tabIndex].empty())
                 tabIndex--;
-            else
+            else {
+                list_it = map->tab[tabIndex].end();
+                list_it--;
                 break;
+            }
         }
-        return *this;
+        return *this; //we earlier checked if map is empty
     }
-    if(innerIndex > 0)
-        innerIndex--;
+    if(list_it != map->tab[tabIndex].begin())
+        list_it--;
     else {
-        tabIndex--;
-        while(tabIndex > 0) {
+        tabIndex = (tabIndex - 1)%MAX_SIZE;
+        while(tabIndex != MAX_SIZE) {
             if(map->tab[tabIndex].empty())
-                tabIndex--;
+                tabIndex = (tabIndex - 1)%MAX_SIZE;
             else
                 break;
         }
-        if(tabIndex == MAX_SIZE)
-            innerIndex = MAX_SIZE;
     }
     return *this;
   }
@@ -297,7 +361,7 @@ public:
   reference operator*() const {
     if(tabIndex == MAX_SIZE)
         throw std::out_of_range("Value unavaible");
-    return map->tab[tabIndex].at(innerIndex);
+    return *list_it;
   }
 
   pointer operator->() const {
@@ -305,7 +369,7 @@ public:
   }
 
   bool operator==(const ConstIterator& other) const {
-    return ((other.innerIndex == this->innerIndex) && (other.tabIndex == this->tabIndex));
+    return ((other.list_it == this->list_it) && (other.tabIndex == this->tabIndex) && (other.map == this->map));
   }
 
   bool operator!=(const ConstIterator& other) const {
@@ -319,11 +383,12 @@ class HashMap<KeyType, ValueType>::Iterator : public HashMap<KeyType, ValueType>
 public:
   using reference = typename HashMap::reference;
   using pointer = typename HashMap::value_type*;
+  using list_iterator = typename std::list<value_type>::iterator;
 
   explicit Iterator()
   {}
 
-  Iterator(const HashMap *map, size_type tabIndex = MAX_SIZE, size_type innerIndex = MAX_SIZE) : ConstIterator(map, tabIndex, innerIndex){}
+  Iterator(const HashMap *map, size_type tabIndex, list_iterator list_it) : ConstIterator(map, tabIndex, list_it){}
 
   Iterator(const ConstIterator& other)
     : ConstIterator(other)
