@@ -49,7 +49,7 @@ public:
 	}
 
 	Node(const KeyType& key, const ValueType& value)
-	: up(nullptr), left(nullptr), right(nullptr), data(std::make_pair(key, value))
+	: up(nullptr), left(nullptr), right(nullptr), data(std::make_pair(key, value)), bf(0)
 	{}
 
 	Node(const KeyType& key) : Node(key, mapped_type()) {}
@@ -57,11 +57,15 @@ public:
   //Node(const KeyType& key) :data(std::make_pair(key, mapped_type())) {}
 
 	void setBf(int bf) {
-    this->bf = bf;
+        this->bf = bf;
 	}
 
-  void changeBf(int value) {
-    this->bf = this->bf + value;
+    void changeBf(int value) {
+        this->bf = this->bf + value;
+	}
+
+	int getBf() {
+        return bf;
 	}
 };
 
@@ -76,6 +80,11 @@ public:
   TreeMap() {
     root = nullptr;
     size = 0;
+  }
+
+  ~TreeMap() {
+    while(begin() != end())
+        remove(begin());
   }
 
   TreeMap(std::initializer_list<value_type> list) : TreeMap() {
@@ -218,6 +227,8 @@ public:
     Node *toDelete = it.current;
     if(toDelete == nullptr)
       throw std::out_of_range("Trying to remove nothing");
+
+    //case when toDeleft has no sons
     if(toDelete->left == nullptr && toDelete->right == nullptr) {
       if(toDelete != root) {
         if(toDelete->up->left == toDelete)
@@ -234,6 +245,7 @@ public:
       return;
     }
 
+    //case when toDelete has only one son
     if(toDelete->left != nullptr || toDelete->right != nullptr) {
       Node *kid;
       if(toDelete->left != nullptr)
@@ -258,6 +270,7 @@ public:
       return;
     }
 
+    //At this point we know toDelete has two sons
     Node *toSwap = toDelete->left;
     while(toSwap->right != nullptr) //searching for largest node of left branch
       toSwap = toSwap->right;
@@ -281,12 +294,13 @@ public:
       }
     }
 
-    if(toDelete != root) { //need to get rid of code duplication
-      toSwap->up = toDelete->up;
       toSwap->left = toDelete->left;
       toSwap->right = toDelete->right;
       toDelete->left->up = toSwap;
       toDelete->right->up = toSwap;
+
+    if(toDelete != root) {
+      toSwap->up = toDelete->up;
       if(toDelete->up->left == toDelete)
         toDelete->up->left = toSwap;
       else
@@ -294,10 +308,6 @@ public:
     }
     else {
       root = toSwap;
-      toSwap->left = toDelete->left;
-      toSwap->right = toDelete->right;
-      toDelete->left->up = toSwap;
-      toDelete->right->up = toSwap;
       toSwap->up = nullptr;
     }
       raiseBF(kid);
@@ -563,6 +573,7 @@ public:
       }
     }
   }
+
 };
 
 template <typename KeyType, typename ValueType>

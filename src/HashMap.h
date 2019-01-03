@@ -57,7 +57,7 @@ public:
     size++;
   }*/
 
-  void append(const value_type data) {
+  void append(value_type data) {
     tab[getHash(data.first)].push_back(data);
     size++;
   }
@@ -68,6 +68,11 @@ public:
   }
 
   ~HashMap() {
+    if(tab != nullptr) {
+        for(size_type i = 0; i < MAX_SIZE; ++i)
+            tab[i].clear();
+        delete[] tab;
+    }
   }
 
   HashMap(std::initializer_list<value_type> list) : HashMap() {
@@ -99,7 +104,7 @@ public:
     }
     //delete[] tab;
     size = 0;
-    for(auto it = other.begin(); it != other.end(); i++)
+    for(auto it = other.begin(); it != other.end(); it++)
         append(std::make_pair((*it).first, (*it).second));
     return *this;
   }
@@ -131,19 +136,27 @@ public:
         if((*list_it).first == key)
             return (*list_it).second;
     }
-    append(std::make_pair(key, mapped_type()));
+    append(std::make_pair(key, mapped_type{}));
     return tab[getHash(key)].back().second;
     //append()
   }
 
   const mapped_type& valueOf(const key_type& key) const {
-    (void)key;
-    throw std::runtime_error("TODO");
+    list_iterator list_it;
+    size_type hashedKey = getHash(key);
+    for(list_it = tab[hashedKey].begin(); list_it != tab[hashedKey].end(); list_it++)
+        if((*list_it).first == key)
+            return (*list_it).second;
+    throw std::out_of_range("Trying to get value of non existent key!");
   }
 
   mapped_type& valueOf(const key_type& key) {
-    (void)key;
-    throw std::runtime_error("TODO");
+    list_iterator list_it;
+    size_type hashedKey = getHash(key);
+    for(list_it = tab[hashedKey].begin(); list_it != tab[hashedKey].end(); list_it++)
+        if((*list_it).first == key)
+            return (*list_it).second;
+    throw std::out_of_range("Trying to get value of non existent key!");
   }
 
   const_iterator find(const key_type& key) const {
@@ -207,8 +220,16 @@ public:
   }
 
   bool operator==(const HashMap& other) const {
-    (void)other;
-    throw std::runtime_error("TODO");
+    if(this == &other)
+        return true;
+    auto a = this->begin(), b = other.begin();
+    while((a != this->end()) && (b != other.end())) {
+        if((*a) != (*b))
+            return false;
+        a++;
+        b++;
+    }
+    return true;
   }
 
   bool operator!=(const HashMap& other) const {
